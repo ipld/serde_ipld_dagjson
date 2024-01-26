@@ -610,8 +610,10 @@ impl ExtractLinks {
     }
 }
 
-impl<'de> de::Deserialize<'de> for ExtractLinks {
-    fn deserialize<D>(mut deserializer: D) -> Result<Self, D::Error>
+impl<'de> de::DeserializeSeed<'de> for ExtractLinks {
+    type Value = ();
+
+    fn deserialize<D>(self, mut deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: de::Deserializer<'de>,
     {
@@ -1068,9 +1070,34 @@ impl<'de> de::Deserialize<'de> for ExtractLinks {
                 links: &mut extracted_links,
             })
             .unwrap();
-        Ok(Self {
-            links: extracted_links,
-        })
+        //Ok(Self {
+        //    links: extracted_links,
+        //})
+        Ok(())
+    }
+}
+
+struct DeserializeSeedExtract<S> {
+    seed: S,
+}
+
+impl<S> DeserializeSeedExtract<S> {
+    fn new(seed: S) -> Self {
+        Self { seed }
+    }
+}
+
+impl<'de, S> de::DeserializeSeed<'de> for DeserializeSeedExtract<S>
+where
+    S: de::DeserializeSeed<'de>,
+{
+    type Value = S::Value;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        self.seed.deserialize(Deserializer::new(deserializer))
     }
 }
 
@@ -1097,7 +1124,8 @@ where
     {
         println!("vmx: de: SeqAccessExtract: next_element_seed");
         //self.access.next_element_seed(DeserializeSeed::new(seed))
-        self.access.next_element_seed(seed)
+        //self.access.next_element_seed(seed)
+        self.access.next_element_seed(DeserializeSeedExtract::new(seed))
     }
 
     fn size_hint(&self) -> Option<usize> {
