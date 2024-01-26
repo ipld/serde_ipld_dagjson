@@ -14,7 +14,8 @@ categories = ["data-structures", "encoding"]
 cid = { version = "0.11.0", features = ["serde-codec"] }
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
+ipld-core = { version = "0.1.0", features = ["serde"] }
 
 [dev-dependencies]
-ipld-core = { version = "0.1.0", features = ["serde"] }
+#ipld-core = { version = "0.1.0", features = ["serde"] }
 serde_bytes = "0.11.14"

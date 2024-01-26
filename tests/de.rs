@@ -199,6 +199,7 @@ fn test_crazy_list() {
     //let slice = b"[123456789959,-34567897654325468,-456787678,true,null,23456543.5]";
     //let slice = b"[null]";
     let slice = b"[123456789959, -34567897654325468, -456787678, true, null, 23456543.5]";
+    println!("vmx: test crazy list");
     let ipld: Vec<Ipld> = de::from_slice(slice).unwrap();
     assert_eq!(
         ipld,
@@ -292,4 +293,29 @@ fn test_reserved_trailing() {
     let ipld: Result<Ipld, _> = de::from_slice(data);
     println!("vmx: ipld: {:?}", ipld);
     assert!(ipld.is_err());
+}
+
+#[test]
+fn test_extract_links() {
+    //let extract_links = de::ExtractLinks::new();
+    //let slice = b"[123456789959,-34567897654325468,-456787678,true,null,23456543.5]";
+    //let slice = b"[null]";
+    //let slice = b"[123456789959, -34567897654325468, -456787678, true, null, 23456543.5]";
+    let slice = br#"[false, 123456789959, -34567897654325468, {"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy" }, -456787678, true, null, {"nested": {"/": "bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7332rphldpdmn2" }}, 23456543.5]"#;
+    println!("vmx: test extract links");
+    //let ipld: Vec<Ipld> = de::from_slice(slice).unwrap();
+    let extracted_links: de::ExtractLinks = de::from_slice(slice).unwrap();
+    println!("vmx: test extract links: extracted: {:?}", extracted_links);
+    assert!(false);
+    //assert_eq!(
+    //    ipld,
+    //    vec![
+    //        Ipld::Integer(123456789959),
+    //        Ipld::Integer(-34567897654325468),
+    //        Ipld::Integer(-456787678),
+    //        Ipld::Bool(true),
+    //        Ipld::Null,
+    //        Ipld::Float(23456543.5),
+    //    ]
+    //);
 }
