@@ -599,6 +599,8 @@ where
     }
 }
 
+use ipld_core::ipld::Ipld;
+
 #[derive(Debug)]
 pub struct ExtractLinks {
     links: Vec<Cid>,
@@ -611,15 +613,13 @@ impl ExtractLinks {
 }
 
 impl<'de> de::DeserializeSeed<'de> for ExtractLinks {
-    type Value = ();
+    type Value = Ipld;
 
     fn deserialize<D>(self, mut deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: de::Deserializer<'de>,
     {
         use std::str::FromStr;
-
-        use ipld_core::ipld::Ipld;
 
         //struct ExtractLinksVisitor<'a, V> {
         //    visitor: V,
@@ -1024,23 +1024,22 @@ impl<'de> de::DeserializeSeed<'de> for ExtractLinks {
                 use de::SeqAccess;
 
                 println!("vmx: de: extract_links: visit_seq");
-                //let mut wrapped = SeqAccessExtract::new(visitor);
-                let mut wrapped = SeqAccessExtract::new(visitor, self);
+                let mut wrapped = SeqAccessExtract::new(visitor);
 
 
                 ////////while let Some(elem) = visitor.next_element::<Ipld>()? {
                 //////while let Some(elem) = visitor.next_element::<Ipld>()? {
-                //while let Some(elem) = wrapped.next_element::<Ipld>()? {
-                //    println!(
-                //        "vmx: de: extract_links: visit_seq: next_element: {:#?}",
-                //        elem
-                //    );
-                //    match elem {
-                //        Ipld::Link(cid) => self.links.push(cid),
-                //        _ => {}
-                //    }
-                //    //vec.push(elem);
-                //}
+                while let Some(elem) = wrapped.next_element::<Ipld>()? {
+                    println!(
+                        "vmx: de: extract_links: visit_seq: next_element: {:#?}",
+                        elem
+                    );
+                    match elem {
+                        Ipld::Link(cid) => self.links.push(cid),
+                        _ => {}
+                    }
+                    //vec.push(elem);
+                }
                 //////
                 ////////Ok(Value::Array(vec))
 
@@ -1073,7 +1072,8 @@ impl<'de> de::DeserializeSeed<'de> for ExtractLinks {
         //Ok(Self {
         //    links: extracted_links,
         //})
-        Ok(())
+        //Ok(())
+        Ok(Ipld::Null)
     }
 }
 
@@ -1101,18 +1101,17 @@ where
     }
 }
 
-struct SeqAccessExtract<D, V> {
+struct SeqAccessExtract<D> {
     access: D,
-    outer_visitor: V,
 }
 
-impl<D, V> SeqAccessExtract<D, V> {
-    fn new(access: D, outer_visitor: V) -> Self {
-        Self { access, outer_visitor }
+impl<D> SeqAccessExtract<D> {
+    fn new(access: D) -> Self {
+        Self { access }
     }
 }
 
-impl<'de, D, V> de::SeqAccess<'de> for SeqAccessExtract<D, V>
+impl<'de, D> de::SeqAccess<'de> for SeqAccessExtract<D>
 where
     D: de::SeqAccess<'de>,
 {
@@ -1125,7 +1124,8 @@ where
         println!("vmx: de: SeqAccessExtract: next_element_seed");
         //self.access.next_element_seed(DeserializeSeed::new(seed))
         //self.access.next_element_seed(seed)
-        self.access.next_element_seed(DeserializeSeedExtract::new(seed))
+        //self.access.next_element_seed(DeserializeSeedExtract::new(seed))
+        self.access.next_element_seed(ExtractLinks::new())
     }
 
     fn size_hint(&self) -> Option<usize> {
