@@ -1,11 +1,12 @@
 //! Deserialization.
-use std::{fmt, io};
+use std::{fmt, io, marker::PhantomData};
 
-use cid::{serde::CID_SERDE_PRIVATE_IDENTIFIER, Cid};
+use cid::{serde::{CID_SERDE_PRIVATE_IDENTIFIER, BytesToCidVisitor}, Cid};
 use serde::{
     de::{
         self,
-        value::{BytesDeserializer, StringDeserializer},
+        value::{BytesDeserializer, StringDeserializer, BorrowedStrDeserializer},
+        VariantAccess as _,
     },
     Deserialize,
 };
@@ -288,6 +289,7 @@ where
     where
         V: de::Visitor<'de>,
     {
+        println!("vmx: de: deserialize_newtype_struct");
         if name == CID_SERDE_PRIVATE_IDENTIFIER {
             self.deserialize_reserved_cid(Visitor::new(visitor))
         } else {
@@ -581,9 +583,12 @@ where
             Some(ref key) if key == "/" => {
                 let value: ReservedKeyValue = visitor.next_value()?;
                 match value.parse()? {
-                    ReservedKeyValueParsed::Cid(cid) => self
-                        .visitor
-                        .visit_newtype_struct(BytesDeserializer::new(&cid.to_bytes())),
+                    //ReservedKeyValueParsed::Cid(cid) => self
+                    //    .visitor
+                    //    .visit_newtype_struct(BytesDeserializer::new(&cid.to_bytes())),
+                    ReservedKeyValueParsed::Cid(cid) => {
+                        self.visitor.visit_enum(CidDeserializer::new(cid))
+                    },
                     ReservedKeyValueParsed::Bytes(bytes) => self.visitor.visit_byte_buf(bytes),
                 }
             }
@@ -599,539 +604,709 @@ where
     }
 }
 
-use ipld_core::ipld::Ipld;
+//use ipld_core::ipld::Ipld;
 
-#[derive(Debug)]
+//struct ExtractLinksVisitor<'a> {
+//    links: &'a mut Vec<Cid>,
+//}
+//
+///// A visitor that pushes CIDs into a vector.
+//impl<'de, 'a> de::Visitor<'de> for ExtractLinksVisitor<'a> {
+//    type Value = ();
+//
+//    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+//        formatter.write_str("only CIDs")
+//    }
+//
+//    fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+//    where
+//        E: de::Error,
+//    {
+//        println!("vmx: de: extract_links visit_bool");
+//        //self.visitor.visit_bool(value)
+//        //Ok(de::IgnoredAny)
+//        //Ok(Cid::from_str("dfs").unwrap())
+//        //Ok(Ipld::Null)
+//        Ok(())
+//    }
+//
+//    //fn visit_i8<E>(self, value: i8) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_i8(value)
+//    //}
+//    //
+//    //fn visit_i16<E>(self, value: i16) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_i16(value)
+//    //}
+//    //
+//    //fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_i32(value)
+//    //}
+//    //
+//    //fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_i64(value)
+//    //}
+//    //
+//    //fn visit_i128<E>(self, value: i128) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_i128(value)
+//    //}
+//    //
+//    //fn visit_u8<E>(self, value: u8) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_u8(value)
+//    //}
+//    //
+//    //fn visit_u16<E>(self, value: u16) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_u16(value)
+//    //}
+//    //
+//    //fn visit_u32<E>(self, value: u32) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_u32(value)
+//    //}
+//    //
+//    //fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_u64(value)
+//    //}
+//    //
+//    //fn visit_u128<E>(self, value: u128) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_u128(value)
+//    //}
+//    //
+//    //fn visit_f32<E>(self, value: f32) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_f32(value)
+//    //}
+//    //
+//    //fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_f64(value)
+//    //}
+//    //
+//    //fn visit_char<E>(self, value: char) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_char(value)
+//    //}
+//    //
+//    //fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_str(value)
+//    //}
+//    //
+//    //fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_borrowed_str(value)
+//    //}
+//    //
+//    //fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_string(value)
+//    //}
+//    //
+//    //fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_bytes(value)
+//    //}
+//    //
+//    //fn visit_borrowed_bytes<E>(self, value: &'de [u8]) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_borrowed_bytes(value)
+//    //}
+//    //
+//    //fn visit_byte_buf<E>(self, value: Vec<u8>) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_byte_buf(value)
+//    //}
+//    //fn visit_none<E>(self) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_none()
+//    //}
+//    //
+//    //fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+//    //where
+//    //    D: de::Deserializer<'de>,
+//    //{
+//    //    self.visitor.visit_some(Deserializer::new(deserializer))
+//    //}
+//    //
+//    //fn visit_unit<E>(self) -> Result<Self::Value, E>
+//    //where
+//    //    E: de::Error,
+//    //{
+//    //    self.visitor.visit_unit()
+//    //}
+//    //
+//    //fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+//    //where
+//    //    D: de::Deserializer<'de>,
+//    //{
+//    //    println!("vmx: de: extract_links: visit_newtype_struct");
+//    //    Ok(Ipld::Null)
+//    //}
+//
+//    fn visit_seq<A>(self, mut visitor: A) -> Result<Self::Value, A::Error>
+//    where
+//        A: de::SeqAccess<'de>,
+//    {
+//        use de::SeqAccess;
+//
+//        println!("vmx: de: extract_links: visit_seq");
+//        let mut wrapped = SeqAccessExtract::new(visitor);
+//
+//        ////////while let Some(elem) = visitor.next_element::<Ipld>()? {
+//        //////while let Some(elem) = visitor.next_element::<Ipld>()? {
+//        while let Some(elem) = wrapped.next_element::<Ipld>()? {
+//            println!(
+//                "vmx: de: extract_links: visit_seq: next_element: {:#?}",
+//                elem
+//            );
+//            match elem {
+//                Ipld::Link(cid) => self.links.push(cid),
+//                _ => {}
+//            }
+//            //vec.push(elem);
+//        }
+//        //////
+//        ////////Ok(Value::Array(vec))
+//
+//        Ok(())
+//    }
+//
+//    fn visit_map<A>(self, mut visitor: A) -> Result<Self::Value, A::Error>
+//    where
+//        A: de::MapAccess<'de>,
+//    {
+//        println!("vmx: de: extract_links: visit_map");
+//        Ok(())
+//    }
+//    //
+//    //fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error>
+//    //where
+//    //    A: de::EnumAccess<'de>,
+//    //{
+//    //    self.visitor.visit_enum(EnumAccess::new(visitor))
+//    //}
+//}
+//
+//#[derive(Debug)]
+//pub struct ExtractLinks {
+//    links: Vec<Cid>,
+//}
+//
+//impl ExtractLinks {
+//    pub fn new() -> Self {
+//        Self { links: Vec::new() }
+//    }
+//}
+//
+//impl<'de> de::DeserializeSeed<'de> for ExtractLinks {
+//    type Value = Ipld;
+//
+//    fn deserialize<D>(self, mut deserializer: D) -> Result<Self::Value, D::Error>
+//    where
+//        D: de::Deserializer<'de>,
+//    {
+//        use std::str::FromStr;
+//
+//        //struct ExtractLinksVisitor<'a, V> {
+//        //    visitor: V,
+//        //    links: &'a mut Vec<Cid>,
+//        //}
+//
+//        //impl<V> Visitor<V> {
+//        //    fn new(visitor: V) -> Self {
+//        //        Self { visitor }
+//        //    }
+//        //}
+//
+//        //impl<'de, 'a, V> de::Visitor<'de> for ExtractLinksVisitor<'a, V>
+//        //where
+//        //    V: de::Visitor<'de>,
+//        //{
+//        //    type Value = V::Value;
+//        //
+//        //    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+//        //        self.visitor.expecting(formatter)
+//        //    }
+//        //
+//        //    fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        println!("vmx: de: visit_bool");
+//        //        self.visitor.visit_bool(value)
+//        //    }
+//        //
+//        //    fn visit_i8<E>(self, value: i8) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_i8(value)
+//        //    }
+//        //
+//        //    fn visit_i16<E>(self, value: i16) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_i16(value)
+//        //    }
+//        //
+//        //    fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_i32(value)
+//        //    }
+//        //
+//        //    fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_i64(value)
+//        //    }
+//        //
+//        //    fn visit_i128<E>(self, value: i128) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_i128(value)
+//        //    }
+//        //
+//        //    fn visit_u8<E>(self, value: u8) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_u8(value)
+//        //    }
+//        //
+//        //    fn visit_u16<E>(self, value: u16) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_u16(value)
+//        //    }
+//        //
+//        //    fn visit_u32<E>(self, value: u32) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_u32(value)
+//        //    }
+//        //
+//        //    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_u64(value)
+//        //    }
+//        //
+//        //    fn visit_u128<E>(self, value: u128) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_u128(value)
+//        //    }
+//        //
+//        //    fn visit_f32<E>(self, value: f32) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_f32(value)
+//        //    }
+//        //
+//        //    fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_f64(value)
+//        //    }
+//        //
+//        //    fn visit_char<E>(self, value: char) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_char(value)
+//        //    }
+//        //
+//        //    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_str(value)
+//        //    }
+//        //
+//        //    fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_borrowed_str(value)
+//        //    }
+//        //
+//        //    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_string(value)
+//        //    }
+//        //
+//        //    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_bytes(value)
+//        //    }
+//        //
+//        //    fn visit_borrowed_bytes<E>(self, value: &'de [u8]) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_borrowed_bytes(value)
+//        //    }
+//        //
+//        //    fn visit_byte_buf<E>(self, value: Vec<u8>) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_byte_buf(value)
+//        //    }
+//        //    fn visit_none<E>(self) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_none()
+//        //    }
+//        //
+//        //    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+//        //    where
+//        //        D: de::Deserializer<'de>,
+//        //    {
+//        //        self.visitor.visit_some(Deserializer::new(deserializer))
+//        //    }
+//        //
+//        //    fn visit_unit<E>(self) -> Result<Self::Value, E>
+//        //    where
+//        //        E: de::Error,
+//        //    {
+//        //        self.visitor.visit_unit()
+//        //    }
+//        //
+//        //    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+//        //    where
+//        //        D: de::Deserializer<'de>,
+//        //    {
+//        //        self.visitor.visit_newtype_struct(deserializer)
+//        //    }
+//        //
+//        //    fn visit_seq<A>(self, visitor: A) -> Result<Self::Value, A::Error>
+//        //    where
+//        //        A: de::SeqAccess<'de>,
+//        //    {
+//        //        self.visitor.visit_seq(SeqAccess::new(visitor))
+//        //    }
+//        //
+//        //    fn visit_map<A>(self, mut visitor: A) -> Result<Self::Value, A::Error>
+//        //    where
+//        //        A: de::MapAccess<'de>,
+//        //    {
+//        //        self.visitor.visit_map(MapAccess::new(visitor, maybe_key)),
+//        //    }
+//        //
+//        //    fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error>
+//        //    where
+//        //        A: de::EnumAccess<'de>,
+//        //    {
+//        //        self.visitor.visit_enum(EnumAccess::new(visitor))
+//        //    }
+//        //}
+//
+//        let mut extracted_links = Vec::new();
+//        println!("vmx: de: extract_links: about to call deserialize_any");
+//        deserializer
+//            .deserialize_any(ExtractLinksVisitor {
+//                links: &mut extracted_links,
+//            })
+//            .unwrap();
+//        //Ok(Self {
+//        //    links: extracted_links,
+//        //})
+//        //Ok(())
+//        Ok(Ipld::Null)
+//    }
+//}
+//
+//struct DeserializeSeedExtract<S> {
+//    seed: S,
+//}
+//
+//impl<S> DeserializeSeedExtract<S> {
+//    fn new(seed: S) -> Self {
+//        Self { seed }
+//    }
+//}
+//
+//impl<'de, S> de::DeserializeSeed<'de> for DeserializeSeedExtract<S>
+//where
+//    S: de::DeserializeSeed<'de>,
+//{
+//    type Value = S::Value;
+//
+//    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+//    where
+//        D: de::Deserializer<'de>,
+//    {
+//        self.seed.deserialize(Deserializer::new(deserializer))
+//        //self.seed
+//        //    .deserialize_any(ExtractLinksVisitor { links: &mut Vec::new() })
+//    }
+//}
+//
+//struct SeqAccessExtract<D> {
+//    access: D,
+//}
+//
+//impl<D> SeqAccessExtract<D> {
+//    fn new(access: D) -> Self {
+//        Self { access }
+//    }
+//}
+//
+//impl<'de, D> de::SeqAccess<'de> for SeqAccessExtract<D>
+//where
+//    D: de::SeqAccess<'de>,
+//{
+//    type Error = D::Error;
+//
+//    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, D::Error>
+//    where
+//        T: de::DeserializeSeed<'de>,
+//    {
+//        println!("vmx: de: SeqAccessExtract: next_element_seed");
+//        //self.access.next_element_seed(DeserializeSeed::new(seed))
+//        self.access.next_element_seed(seed)
+//        //self.access
+//        //    .next_element_seed(DeserializeSeedExtract::new(seed))
+//        //self.access.next_element_seed(ExtractLinks::new())
+//    }
+//
+//    fn size_hint(&self) -> Option<usize> {
+//        self.access.size_hint()
+//    }
+//}
+
+
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExtractLinks {
     links: Vec<Cid>,
 }
 
 impl ExtractLinks {
     pub fn new() -> Self {
-        Self { links: Vec::new() }
-    }
-}
-
-impl<'de> de::DeserializeSeed<'de> for ExtractLinks {
-    type Value = Ipld;
-
-    fn deserialize<D>(self, mut deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        use std::str::FromStr;
-
-        //struct ExtractLinksVisitor<'a, V> {
-        //    visitor: V,
-        //    links: &'a mut Vec<Cid>,
-        //}
-
-        //impl<V> Visitor<V> {
-        //    fn new(visitor: V) -> Self {
-        //        Self { visitor }
-        //    }
-        //}
-
-        //impl<'de, 'a, V> de::Visitor<'de> for ExtractLinksVisitor<'a, V>
-        //where
-        //    V: de::Visitor<'de>,
-        //{
-        //    type Value = V::Value;
-        //
-        //    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        //        self.visitor.expecting(formatter)
-        //    }
-        //
-        //    fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        println!("vmx: de: visit_bool");
-        //        self.visitor.visit_bool(value)
-        //    }
-        //
-        //    fn visit_i8<E>(self, value: i8) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_i8(value)
-        //    }
-        //
-        //    fn visit_i16<E>(self, value: i16) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_i16(value)
-        //    }
-        //
-        //    fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_i32(value)
-        //    }
-        //
-        //    fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_i64(value)
-        //    }
-        //
-        //    fn visit_i128<E>(self, value: i128) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_i128(value)
-        //    }
-        //
-        //    fn visit_u8<E>(self, value: u8) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_u8(value)
-        //    }
-        //
-        //    fn visit_u16<E>(self, value: u16) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_u16(value)
-        //    }
-        //
-        //    fn visit_u32<E>(self, value: u32) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_u32(value)
-        //    }
-        //
-        //    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_u64(value)
-        //    }
-        //
-        //    fn visit_u128<E>(self, value: u128) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_u128(value)
-        //    }
-        //
-        //    fn visit_f32<E>(self, value: f32) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_f32(value)
-        //    }
-        //
-        //    fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_f64(value)
-        //    }
-        //
-        //    fn visit_char<E>(self, value: char) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_char(value)
-        //    }
-        //
-        //    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_str(value)
-        //    }
-        //
-        //    fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_borrowed_str(value)
-        //    }
-        //
-        //    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_string(value)
-        //    }
-        //
-        //    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_bytes(value)
-        //    }
-        //
-        //    fn visit_borrowed_bytes<E>(self, value: &'de [u8]) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_borrowed_bytes(value)
-        //    }
-        //
-        //    fn visit_byte_buf<E>(self, value: Vec<u8>) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_byte_buf(value)
-        //    }
-        //    fn visit_none<E>(self) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_none()
-        //    }
-        //
-        //    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        //    where
-        //        D: de::Deserializer<'de>,
-        //    {
-        //        self.visitor.visit_some(Deserializer::new(deserializer))
-        //    }
-        //
-        //    fn visit_unit<E>(self) -> Result<Self::Value, E>
-        //    where
-        //        E: de::Error,
-        //    {
-        //        self.visitor.visit_unit()
-        //    }
-        //
-        //    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        //    where
-        //        D: de::Deserializer<'de>,
-        //    {
-        //        self.visitor.visit_newtype_struct(deserializer)
-        //    }
-        //
-        //    fn visit_seq<A>(self, visitor: A) -> Result<Self::Value, A::Error>
-        //    where
-        //        A: de::SeqAccess<'de>,
-        //    {
-        //        self.visitor.visit_seq(SeqAccess::new(visitor))
-        //    }
-        //
-        //    fn visit_map<A>(self, mut visitor: A) -> Result<Self::Value, A::Error>
-        //    where
-        //        A: de::MapAccess<'de>,
-        //    {
-        //        self.visitor.visit_map(MapAccess::new(visitor, maybe_key)),
-        //    }
-        //
-        //    fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error>
-        //    where
-        //        A: de::EnumAccess<'de>,
-        //    {
-        //        self.visitor.visit_enum(EnumAccess::new(visitor))
-        //    }
-        //}
-
-        struct ExtractLinksVisitor<'a> {
-            links: &'a mut Vec<Cid>,
-        };
-
-        /// A visitor that pushes CIDs into a vector.
-        impl<'de, 'a> de::Visitor<'de> for ExtractLinksVisitor<'a> {
-            type Value = ();
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("only CIDs")
-            }
-
-            fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                println!("vmx: de: extract_links visit_bool");
-                //self.visitor.visit_bool(value)
-                //Ok(de::IgnoredAny)
-                //Ok(Cid::from_str("dfs").unwrap())
-                //Ok(Ipld::Null)
-                Ok(())
-            }
-
-            //fn visit_i8<E>(self, value: i8) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_i8(value)
-            //}
-            //
-            //fn visit_i16<E>(self, value: i16) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_i16(value)
-            //}
-            //
-            //fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_i32(value)
-            //}
-            //
-            //fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_i64(value)
-            //}
-            //
-            //fn visit_i128<E>(self, value: i128) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_i128(value)
-            //}
-            //
-            //fn visit_u8<E>(self, value: u8) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_u8(value)
-            //}
-            //
-            //fn visit_u16<E>(self, value: u16) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_u16(value)
-            //}
-            //
-            //fn visit_u32<E>(self, value: u32) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_u32(value)
-            //}
-            //
-            //fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_u64(value)
-            //}
-            //
-            //fn visit_u128<E>(self, value: u128) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_u128(value)
-            //}
-            //
-            //fn visit_f32<E>(self, value: f32) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_f32(value)
-            //}
-            //
-            //fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_f64(value)
-            //}
-            //
-            //fn visit_char<E>(self, value: char) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_char(value)
-            //}
-            //
-            //fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_str(value)
-            //}
-            //
-            //fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_borrowed_str(value)
-            //}
-            //
-            //fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_string(value)
-            //}
-            //
-            //fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_bytes(value)
-            //}
-            //
-            //fn visit_borrowed_bytes<E>(self, value: &'de [u8]) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_borrowed_bytes(value)
-            //}
-            //
-            //fn visit_byte_buf<E>(self, value: Vec<u8>) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_byte_buf(value)
-            //}
-            //fn visit_none<E>(self) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_none()
-            //}
-            //
-            //fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-            //where
-            //    D: de::Deserializer<'de>,
-            //{
-            //    self.visitor.visit_some(Deserializer::new(deserializer))
-            //}
-            //
-            //fn visit_unit<E>(self) -> Result<Self::Value, E>
-            //where
-            //    E: de::Error,
-            //{
-            //    self.visitor.visit_unit()
-            //}
-            //
-            //fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-            //where
-            //    D: de::Deserializer<'de>,
-            //{
-            //    println!("vmx: de: extract_links: visit_newtype_struct");
-            //    Ok(Ipld::Null)
-            //}
-
-            fn visit_seq<A>(self, mut visitor: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::SeqAccess<'de>,
-            {
-                use de::SeqAccess;
-
-                println!("vmx: de: extract_links: visit_seq");
-                let mut wrapped = SeqAccessExtract::new(visitor);
-
-
-                ////////while let Some(elem) = visitor.next_element::<Ipld>()? {
-                //////while let Some(elem) = visitor.next_element::<Ipld>()? {
-                while let Some(elem) = wrapped.next_element::<Ipld>()? {
-                    println!(
-                        "vmx: de: extract_links: visit_seq: next_element: {:#?}",
-                        elem
-                    );
-                    match elem {
-                        Ipld::Link(cid) => self.links.push(cid),
-                        _ => {}
-                    }
-                    //vec.push(elem);
-                }
-                //////
-                ////////Ok(Value::Array(vec))
-
-                Ok(())
-            }
-
-            fn visit_map<A>(self, mut visitor: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::MapAccess<'de>,
-            {
-                println!("vmx: de: extract_links: visit_map");
-                Ok(())
-            }
-            //
-            //fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error>
-            //where
-            //    A: de::EnumAccess<'de>,
-            //{
-            //    self.visitor.visit_enum(EnumAccess::new(visitor))
-            //}
+        Self {
+            links: Vec::new(),
         }
-
-        let mut extracted_links = Vec::new();
-        println!("vmx: de: extract_links: about to call deserialize_any");
-        deserializer
-            .deserialize_any(ExtractLinksVisitor {
-                links: &mut extracted_links,
-            })
-            .unwrap();
-        //Ok(Self {
-        //    links: extracted_links,
-        //})
-        //Ok(())
-        Ok(Ipld::Null)
     }
 }
 
-struct DeserializeSeedExtract<S> {
-    seed: S,
-}
+impl<'de> de::Visitor<'de> for ExtractLinks {
+    type Value = Self;
 
-impl<S> DeserializeSeedExtract<S> {
-    fn new(seed: S) -> Self {
-        Self { seed }
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("anything at all")
     }
-}
 
-impl<'de, S> de::DeserializeSeed<'de> for DeserializeSeedExtract<S>
-where
-    S: de::DeserializeSeed<'de>,
-{
-    type Value = S::Value;
+    #[inline]
+    fn visit_bool<E>(self, x: bool) -> Result<Self::Value, E> {
+        println!("vmx: de: ignored any: visit_bool");
+        let _ = x;
+        Ok(Self::new())
+    }
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    #[inline]
+    fn visit_i64<E>(self, x: i64) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_i128<E>(self, x: i128) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_u64<E>(self, x: u64) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_u128<E>(self, x: u128) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_f64<E>(self, x: f64) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let _ = s;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Self::Value, E> {
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        self.seed.deserialize(Deserializer::new(deserializer))
+        Self::deserialize(deserializer)
     }
-}
 
-struct SeqAccessExtract<D> {
-    access: D,
-}
-
-impl<D> SeqAccessExtract<D> {
-    fn new(access: D) -> Self {
-        Self { access }
-    }
-}
-
-impl<'de, D> de::SeqAccess<'de> for SeqAccessExtract<D>
-where
-    D: de::SeqAccess<'de>,
-{
-    type Error = D::Error;
-
-    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, D::Error>
+    #[inline]
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
-        T: de::DeserializeSeed<'de>,
+        D: de::Deserializer<'de>,
     {
-        println!("vmx: de: SeqAccessExtract: next_element_seed");
-        //self.access.next_element_seed(DeserializeSeed::new(seed))
-        //self.access.next_element_seed(seed)
-        //self.access.next_element_seed(DeserializeSeedExtract::new(seed))
-        self.access.next_element_seed(ExtractLinks::new())
+        println!("vmx: de: ignored any: visit_newtype_struct");
+        Self::deserialize(deserializer)
     }
 
-    fn size_hint(&self) -> Option<usize> {
-        self.access.size_hint()
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::SeqAccess<'de>,
+    {
+        println!("vmx: de: ignored any: visit_seq");
+        while let Some(mut maybe_links) = seq.next_element::<Self>()? {
+            println!("vmx: de: ignored any: visit_seq: maybe links: {:?}", maybe_links);
+                self.links.append(&mut maybe_links.links)
+        }
+        Ok(self)
+    }
+
+    #[inline]
+    fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::MapAccess<'de>,
+    {
+        while let Some((_, mut maybe_links)) = map.next_entry::<Self, Self>()? {
+            self.links.append(&mut maybe_links.links)
+        }
+        Ok(self)
+    }
+
+    #[inline]
+    fn visit_bytes<E>(self, bytes: &[u8]) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        println!("vmx: de: ignored any: visit_bytes");
+        let _ = bytes;
+        Ok(Self::new())
+    }
+
+    fn visit_enum<A>(mut self, data: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::EnumAccess<'de>,
+    {
+        println!("vmx: de: ignored any: visit_enum");
+        //data.variant::<IgnoredAny>()?.1.newtype_variant()
+        match data.variant() {
+            // Make sure that we only deserialize a CID when we clearly intended to.
+            Ok((CID_SERDE_PRIVATE_IDENTIFIER, value)) => {
+                // It's not really a tuple, we use the `tuple_variant` call in order to be
+                // able to pass in a custom visitor.
+                let cid: Cid = value.tuple_variant(1, BytesToCidVisitor)?;
+                println!("vmx: de: ignored any: visit_enum: push CID: {:?}", cid);
+                self.links.push(cid);
+                Ok(self)
+            }
+            Ok((_, value)) => {
+                panic!("vmx: TODO 2024-01-29: Think about what to do in this case")
+            },
+            Err(error) => Err(error),
+            //_ => Err(de::Error::custom(
+            //        "vmx: TODO 2024-",
+            //)),
+        }
     }
 }
+
+impl<'de> Deserialize<'de> for ExtractLinks {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(Self::new())
+    }
+}
+
+
+
 
 struct DeserializeSeed<S> {
     seed: S,
@@ -1309,3 +1484,99 @@ where
 //struct Links {
 //    cids: Vec<Cid>,
 //}
+
+
+struct CidDeserializer<E> {
+    cid: Cid,
+    _error: PhantomData<E>,
+}
+
+impl<E> CidDeserializer<E> {
+    pub fn new(cid: Cid) -> Self {
+        Self { cid, _error: PhantomData }
+    }
+}
+
+//impl<'de> de::Deserializer<'de> for CidDeserializer {
+//    type Error = SerdeError;
+//
+//    #[inline]
+//    fn deserialize_any<V: de::Visitor<'de>>(self, _visitor: V) -> Result<V::Value, Self::Error> {
+//        error("Only bytes can be deserialized into a CID")
+//    }
+//
+//    fn deserialize_bytes<V: de::Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
+//        visitor.visit_bytes(&self.0.to_bytes())
+//    }
+//
+//    forward_to_deserialize_any! {
+//        bool byte_buf char enum f32 f64  i8 i16 i32 i64 identifier ignored_any map newtype_struct
+//        option seq str string struct tuple tuple_struct u8 u16 u32 u64 unit unit_struct
+//    }
+//}
+
+
+impl<'de, E> de::EnumAccess<'de> for CidDeserializer<E>
+where
+    E: de::Error,
+{
+    type Error = E;
+    // We just implement `VariantAccess` for `CidDeserializer`.
+    type Variant = Self;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
+    where
+        V: de::DeserializeSeed<'de>,
+    {
+        // This is the Serde way of saying `let value = CID_SERDE_PRIVATE_IDENTIFIER;`.
+        //let key = seed.deserialize(StrDeserializer(CID_SERDE_PRIVATE_IDENTIFIER))?;
+        //let key = seed.deserialize(StrDeserializer::<Self::Error>::new(CID_SERDE_PRIVATE_IDENTIFIER))?;
+        //let key = seed.deserialize(BorrowedStrDeserializer::<Self::Error>::new(CID_SERDE_PRIVATE_IDENTIFIER))?;
+        let key = seed.deserialize(BorrowedStrDeserializer::new(CID_SERDE_PRIVATE_IDENTIFIER))?;
+        // The `CidDeserializer` already contains the CID, hence return itself.
+        Ok((key, self))
+    }
+}
+
+impl<'de, E> de::VariantAccess<'de> for CidDeserializer<E>
+where
+    E: de::Error,
+{
+    type Error = E;
+
+    fn unit_variant(self) -> Result<(), Self::Error> {
+        unreachable!();
+    }
+
+    fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value, Self::Error>
+    where
+        T: de::DeserializeSeed<'de>,
+    {
+        unreachable!();
+    }
+
+    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        if len == 1 {
+            // This is not how tuple variants usually work. This is a hack in order to get a CID out.
+            visitor.visit_bytes(&self.cid.to_bytes())
+        } else {
+            Err(de::Error::custom("CidDeserializer only support deserializing CIDs"))
+        }
+    }
+
+    fn struct_variant<V>(
+        self,
+        _fields: &'static [&'static str],
+        _visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        unreachable!();
+    }
+}
+
+

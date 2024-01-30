@@ -11,7 +11,8 @@ license = "MIT OR Apache-2.0"
 categories = ["data-structures", "encoding"]
 
 [dependencies]
-cid = { version = "0.11.0", features = ["serde-codec"] }
+#cid = { version = "0.11.0", features = ["serde-codec"] }
+cid = { git = "https://github.com/multiformats/rust-cid", branch = "cid-as-enum", features = ["serde"] }
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
 ipld-core = { version = "0.1.0", features = ["serde"] }
@@ -19,3 +20,6 @@ ipld-core = { version = "0.1.0", features = ["serde"] }
 [dev-dependencies]
 #ipld-core = { version = "0.1.0", features = ["serde"] }
 serde_bytes = "0.11.14"
+
+[patch.crates-io]
+cid = { git = "https://github.com/multiformats/rust-cid", branch = "cid-as-enum", features = ["serde"] }
