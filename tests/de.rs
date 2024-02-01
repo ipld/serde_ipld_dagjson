@@ -303,8 +303,8 @@ fn test_extract_links() {
     //let slice = b"[123456789959,-34567897654325468,-456787678,true,null,23456543.5]";
     //let slice = b"[null]";
     //let slice = b"[123456789959, -34567897654325468, -456787678, true, null, 23456543.5]";
-    //let slice = br#"[false, 123456789959, -34567897654325468, {"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy" }, -456787678, {"nested_bool": true}, null, {"nested": {"/": "bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7332rphldpdmn2" }}, 23456543.5]"#;
-    let slice = br#"[{"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy" }, -456787678, {"nested_bool": true}, null, {"nested": {"/": "bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7332rphldpdmn2" }}, 23456543.5]"#;
+    let slice = br#"[123456789959, -34567897654325468, {"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy" }, -456787678, {"nested_bool": true}, null, {"nested": {"/": "bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7332rphldpdmn2" }}, 23456543.5]"#;
+    //let slice = br#"[{"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy" }, -456787678, {"nested_bool": true}, null, {"nested": {"/": "bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7332rphldpdmn2" }}, 23456543.5]"#;
     println!("vmx: test extract links");
     //let ipld: Vec<Ipld> = de::from_slice(slice).unwrap();
     let extracted_links: de::ExtractLinks = de::from_slice(slice).unwrap();
@@ -313,16 +313,12 @@ fn test_extract_links() {
     //let extracted_links = de::ExtractLinks::new().deserialize(deserializer);
     //let extracted_links: de::ExtractLinks = de::from_slice(slice).unwrap();
     println!("vmx: test extract links: extracted: {:?}", extracted_links);
-    assert!(false);
-    //assert_eq!(
-    //    ipld,
-    //    vec![
-    //        Ipld::Integer(123456789959),
-    //        Ipld::Integer(-34567897654325468),
-    //        Ipld::Integer(-456787678),
-    //        Ipld::Bool(true),
-    //        Ipld::Null,
-    //        Ipld::Float(23456543.5),
-    //    ]
-    //);
+    //assert!(false);
+    assert_eq!(
+        extracted_links.links,
+        vec![
+        Cid::from_str("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap(),
+        Cid::from_str("bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7332rphldpdmn2").unwrap(),
+        ]
+    );
 }

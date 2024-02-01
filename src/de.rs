@@ -89,7 +89,8 @@ where
         let reserved = ReservedKeyMap::deserialize(self.de)?;
         match reserved._slash.parse()? {
             ReservedKeyValueParsed::Cid(cid) => {
-                visitor.visit_newtype_struct(BytesDeserializer::new(&cid.to_bytes()))
+                visitor.visit_enum(CidDeserializer::new(cid))
+                //visitor.visit_newtype_struct(BytesDeserializer::new(&cid.to_bytes()))
             }
             _ => Err(de::Error::custom("Expected a CID")),
         }
@@ -289,13 +290,14 @@ where
     where
         V: de::Visitor<'de>,
     {
-        println!("vmx: de: deserialize_newtype_struct");
-        if name == CID_SERDE_PRIVATE_IDENTIFIER {
-            self.deserialize_reserved_cid(Visitor::new(visitor))
-        } else {
-            self.de
-                .deserialize_newtype_struct(name, Visitor::new(visitor))
-        }
+        //println!("vmx: de: deserialize_newtype_struct");
+        //if name == CID_SERDE_PRIVATE_IDENTIFIER {
+        //    self.deserialize_reserved_cid(Visitor::new(visitor))
+        //} else {
+        //    self.de
+        //        .deserialize_newtype_struct(name, Visitor::new(visitor))
+        //}
+        self.de.deserialize_newtype_struct(name, Visitor::new(visitor))
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, D::Error>
@@ -354,8 +356,13 @@ where
     where
         V: de::Visitor<'de>,
     {
-        self.de
-            .deserialize_enum(name, variants, Visitor::new(visitor))
+        println!("vmx: de: deserialize_enum");
+        if name == CID_SERDE_PRIVATE_IDENTIFIER && variants == [CID_SERDE_PRIVATE_IDENTIFIER] {
+            self.deserialize_reserved_cid(Visitor::new(visitor))
+        } else {
+            self.de
+                .deserialize_enum(name, variants, Visitor::new(visitor))
+        }
     }
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, D::Error>
@@ -600,13 +607,14 @@ where
     where
         A: de::EnumAccess<'de>,
     {
+        println!("vmx: de: visitor: visit_enum");
         self.visitor.visit_enum(EnumAccess::new(visitor))
     }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExtractLinks {
-    links: Vec<Cid>,
+    pub links: Vec<Cid>,
 }
 
 impl ExtractLinks {

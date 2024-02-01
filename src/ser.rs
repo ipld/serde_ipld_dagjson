@@ -52,7 +52,12 @@ where
     type SerializeSeq = Serializer<S::SerializeSeq>;
     type SerializeTuple = Serializer<S::SerializeTuple>;
     type SerializeTupleStruct = Serializer<S::SerializeTupleStruct>;
-    type SerializeTupleVariant = Serializer<S::SerializeTupleVariant>;
+    //type SerializeTupleVariant = Serializer<S::SerializeTupleVariant>;
+    //type SerializeTupleVariant = SerializeCid<S::SerializeTupleVariant, S>;
+    //type SerializeTupleVariant = SerializeCid<Self>;
+    //type SerializeTupleVariant = SerializeCid<S::SerializeTupleVariant, CidSerializer<'a, S>>;
+    //type SerializeTupleVariant = SerializeCid<S::SerializeTupleVariant, CidSerializer<S>>;
+    type SerializeTupleVariant = SerializeCid<S::SerializeTupleVariant, S>;
     type SerializeMap = Serializer<S::SerializeMap>;
     type SerializeStruct = Serializer<S::SerializeStruct>;
     type SerializeStructVariant = Serializer<S::SerializeStructVariant>;
@@ -177,14 +182,14 @@ where
     where
         T: ?Sized + ser::Serialize,
     {
-        println!("vmx: ser: serialize_newtype_struct");
-        if name == CID_SERDE_PRIVATE_IDENTIFIER {
-            //SerializeRef::new(value).serialize(CidSerializer(self.ser))
-            value.serialize(CidSerializer(self.ser))
-        } else {
+        //println!("vmx: ser: serialize_newtype_struct");
+        //if name == CID_SERDE_PRIVATE_IDENTIFIER {
+        //    //SerializeRef::new(value).serialize(CidSerializer(self.ser))
+        //    value.serialize(CidSerializer(self.ser))
+        //} else {
             self.ser
                 .serialize_newtype_struct(name, &SerializeRef::new(value))
-        }
+        //}
     }
 
     fn serialize_newtype_variant<T>(
@@ -226,10 +231,46 @@ where
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        Ok(Self::SerializeTupleVariant::new(
-            self.ser
-                .serialize_tuple_variant(name, variant_index, variant, len)?,
-        ))
+        println!("vmx: ser: serialize tuple variant: name, variant_index, variant, len: {:?} {:?} {:?} {:?}", name, variant_index, variant, len);
+        if name == CID_SERDE_PRIVATE_IDENTIFIER && variant_index == 0 && variant == CID_SERDE_PRIVATE_IDENTIFIER && len == 1 {
+            println!("vmx: ser: serialize tuple variant: it's a CID");
+            //Ok(SerializeCid::new(
+            //        self.ser
+            //        .serialize_tuple_variant(name, variant_index, variant, len)?,
+            //))
+            //Ok(Self::SerializeTupleVariant::new(CidSerializer(self.ser)))
+            //Ok(Self::SerializeTupleVariant::new_cid(
+            //        //self.ser
+            //        //.serialize_tuple_variant(name, variant_index, variant, len)?,
+            //        CidSerializer(self.ser)
+            //))
+            //Ok(Self::SerializeTupleVariant::new(
+            //        self.ser
+            //        .serialize_tuple_variant(name, variant_index, variant, len)?,
+            //))
+            //Ok(Self::SerializeTupleVariant::new(
+            //        //self.ser
+            //        //.serialize_tuple_variant(name, variant_index, variant, len)?,
+            //        self.ser,
+            //        //name, variant_index, variant, len,
+            //))
+            //Ok(Self::SerializeTupleVariant::new(CidSerializer(self.ser)))
+            Ok(Self::SerializeTupleVariant::new_cid(
+                    //CidSerializer::new(self.ser)
+                   self.ser
+            ))
+        } else {
+            Ok(Self::SerializeTupleVariant::new(
+                    self.ser
+                    .serialize_tuple_variant(name, variant_index, variant, len)?,
+                    //self.ser,
+                    //name, variant_index, variant, len,
+            ))
+        }
+            //Ok(Self::SerializeTupleVariant::new(
+            //        self.ser
+            //        .serialize_tuple_variant(name, variant_index, variant, len)?,
+            //))
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
@@ -395,7 +436,7 @@ where
 
 impl<S> ser::SerializeTupleVariant for Serializer<S>
 where
-    S: ser::SerializeTupleVariant,
+    S: ser::SerializeTupleVariant
 {
     type Ok = S::Ok;
     type Error = S::Error;
@@ -404,6 +445,7 @@ where
     where
         T: ?Sized + ser::Serialize,
     {
+        println!("vmx: ser: serialize tuple variant");
         self.ser.serialize_field(&SerializeRef::new(value))
     }
 
@@ -493,9 +535,247 @@ where
     }
 }
 
-/// Serializing a CID correctly as DAG-JSON.
-struct CidSerializer<S>(S);
 
+//pub struct SerializeCid<U>
+//where
+//    //S: ser::Serializer + ser::SerializeTupleVariant,
+//    U: ser::Serializer,
+//{
+//    //tuple_ser: S,
+//    tuple_ser: Option<U::SerializeTupleVariant>,
+//    is_cid: bool,
+//    json_ser: U,
+//    //cid_serializer: Option<CidSerializer<S>>,
+//    //cid: Option<<S as ser::Serializer>::SerializeTupleVariant::Ok>
+//    //cid: Option<<S as ser::SerializeTupleVariant>::Ok>
+//}
+
+pub enum SerializeCid<S, U> {
+    TupleVariant(S),
+    Cid(U),
+}
+
+impl<S, U> SerializeCid<S, U>
+//where
+    //S: ser::SerializeTupleVariant,
+    //U: ser::Serializer,
+{
+    //pub fn new(tuple_ser: S, json_ser: U) -> Self {
+    //    //Self { ser: Some(serializer), cid_serializer: None, cid: None }
+    //    Self { tuple_ser, json_ser, is_cid: false }
+    //}
+    //
+    //pub fn new_cid(tuple_ser: S, json_ser: U) -> Self {
+    //    //Self { ser: None, cid_serializer: Some(CidSerializer(serializer)), cid: None }
+    //    Self { tuple_ser, json_ser, is_cid: false }
+    //}
+    //pub fn new(json_ser: U,
+    //    name: &'static str,
+    //    variant_index: u32,
+    //    variant: &'static str,
+    //    len: usize,
+    //
+    //    ) -> Self {
+    //    //Self { ser: Some(serializer), cid_serializer: None, cid: None }
+    //    //let tuple_ser = json_ser.serialize_tuple_variant(name, variant_index, variant, len).unwrap();
+    //    Self { json_ser, is_cid: false, tuple_ser: None }
+    //}
+    //
+    //pub fn new_cid(json_ser: U,
+    //    name: &'static str,
+    //    variant_index: u32,
+    //    variant: &'static str,
+    //    len: usize,
+    //    ) -> Self {
+    //    //Self { ser: None, cid_serializer: Some(CidSerializer(serializer)), cid: None }
+    //    //let tuple_ser = json_ser.serialize_tuple_variant(name, variant_index, variant, len).unwrap();
+    //    Self { json_ser, is_cid: false, tuple_ser: None}
+    //}
+    pub fn new(tuple_serializer: S) -> Self {
+        Self::TupleVariant(tuple_serializer)
+    }
+    pub fn new_cid(json_serializer: U) -> Self {
+        Self::Cid(json_serializer)
+    }
+}
+
+
+//impl<U> ser::SerializeTupleVariant for SerializeCid<U>
+impl<S, U> ser::SerializeTupleVariant for SerializeCid<S, U>
+where
+    S: ser::SerializeTupleVariant,
+    //for<'a> &'a mut U: ser::Serializer,
+    U: ser::Serializer,
+//    //S: ser::SerializeTupleVariant,
+//    //S: ser::Serializer,
+{
+    //type Ok = <S as ser::Serialize>::SerializeTupleVariant::Ok;
+    //type Error = <S as ser::Serialize>::SerializeTupleVariant::Error;
+    //type Ok = ();
+    //type Error = EncodeError;
+    //type Ok = <S as ser::SerializeTupleVariant>::Ok;
+    //type Error = <S as ser::SerializeTupleVariant>::Error;
+    //type Ok = <<U as ser::Serializer>::SerializeTupleVariant as ser::SerializeTupleVariant>::Ok;
+    //type Error = <<U as ser::Serializer>::SerializeTupleVariant as ser::SerializeTupleVariant>::Error;
+    type Ok = S::Ok;
+    type Error = S::Error;
+
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + ser::Serialize,
+    {
+        println!("vmx: ser: serialize tuple variant2");
+        //if self.is_cid {
+        //    //self.cid = Some(cid_serializer.serialize_bytes(value));
+        //    //self.cid = Some(value.serialize(cid_serializer).unwrap());
+        //    value.serialize(CidSerializer(self.json_ser)).unwrap();
+        //    return Ok(())
+        //} else {
+        //    let tuple_ser = self.json_ser.serialize_tuple_variant("df", 0 , "da", 1).unwrap();
+        //    //self.tuple_ser.serialize_field(&SerializeRef::new(value))
+        //    tuple_ser.serialize_field(&SerializeRef::new(value))
+        //}
+        match self {
+            Self::TupleVariant(serializer) => {
+                serializer.serialize_field(&SerializeRef::new(value));
+                Ok(())
+            },
+            Self::Cid(serializer) => {
+                //let cid: Cid = value.serialize(serializer)?;
+                //serializer.serialize(value);
+                //serializer.serialize_field(&SerializeRef::new(value));
+
+
+
+                // NOTE vmx 2024-02-02: commenting this line out makes things compile. But how can
+                // I get this serialization work? The idea would then to store the result of the
+                // deserialization temporarily within this impl and then return it on the `end()`
+                // call.
+                value.serialize(CidSerializer::new(serializer));
+
+
+
+                //value.serialize(SerializeRef::new(value));
+                //ser::Serialize::serialize(value, serializer);
+                Ok(())
+            }
+        }
+    }
+
+    fn end(mut self) -> Result<Self::Ok, Self::Error> {
+        //if let Some(cid) = self.cid.take() {
+        //    cid.into()
+        //} else {
+        //self.ser.as_mut().unwrap().end()
+        //}
+        match self {
+            Self::TupleVariant(serializer) => {
+                serializer.end()
+            },
+            Self::Cid(serializer) => {
+                todo!();
+            }
+        }
+    }
+}
+
+//pub struct SerializeCid<S, U>
+//where
+//    U: ser::Serializer,
+//{
+//    ser: Option<S>,
+//    //is_cid: bool,
+//    cid_serializer: Option<CidSerializer<U>>,
+//    cid: Option<U::Ok>
+//}
+//
+//impl<S, U> SerializeCid<S, U>
+//where
+//    U: ser::Serializer,
+//{
+//    pub fn new(serializer: S) -> Self {
+//        Self { ser: Some(serializer), cid_serializer: None, cid: None }
+//    }
+//
+//    pub fn new_cid(cid_serializer: CidSerializer<U>) -> Self {
+//        Self { ser: None, cid_serializer: Some(cid_serializer), cid: None }
+//    }
+//}
+//
+//impl<S, U> ser::SerializeTupleVariant for SerializeCid<S, U>
+//where
+//    //S: ser::SerializeTupleVariant + ser::Serializer,
+//    S: ser::SerializeTupleVariant,
+//    U: ser::Serializer,
+//{
+//    type Ok = <S as ser::SerializeTupleVariant>::Ok;
+//    type Error = <S as ser::SerializeTupleVariant>::Error;
+//
+//    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
+//    where
+//        T: ?Sized + ser::Serialize,
+//    {
+//        println!("vmx: ser: serialize tuple variant2");
+//        if let Some(cid_serializer) = self.cid_serializer.take() {
+//            //self.cid = Some(cid_serializer.serialize_bytes(value));
+//            self.cid = Some(value.serialize(cid_serializer).unwrap());
+//            return Ok(())
+//        } else {
+//            self.ser.as_mut().unwrap().serialize_field(&SerializeRef::new(value))
+//        }
+//    }
+//
+//    fn end(mut self) -> Result<Self::Ok, Self::Error> {
+//        if let Some(cid) = self.cid.take() {
+//            cid.into()
+//        } else {
+//        //self.ser.as_mut().unwrap().end()
+//        todo!();
+//        //self.ser.as_mut().unwrap().end()
+//        }
+//    }
+//}
+//
+
+
+/// Serializing a CID correctly as DAG-JSON.
+//struct CidSerializer<S>(S);
+pub struct CidSerializer<S> {
+//struct CidSerializer<'a, S> {
+    //ser: &'a mut S
+    ser: S
+}
+
+impl<S> CidSerializer<S> {
+//impl<'a, S> CidSerializer<'a, S> {
+    //pub fn new(ser: &'a mut S) -> Self {
+    pub fn new(ser: S) -> Self {
+        Self { ser }
+    }
+}
+
+//impl<S> ser::SerializeTupleVariant for CidSerializer<S>
+//where
+//    S: ser::SerializeTupleVariant,
+//{
+//    type Ok = S::Ok;
+//    type Error = S::Error;
+//
+//    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
+//    where
+//        T: ?Sized + ser::Serialize,
+//    {
+//        self.0.serialize_field(&SerializeRef::new(value))
+//    }
+//
+//    fn end(self) -> Result<Self::Ok, Self::Error> {
+//        self.0.end()
+//    }
+//}
+//
+
+//impl<'a, S> ser::Serializer for &mut CidSerializer<'a, S>
+//impl<S> ser::Serializer for &mut CidSerializer<S>
 impl<S> ser::Serializer for CidSerializer<S>
 where
     S: ser::Serializer,
@@ -556,7 +836,8 @@ where
         let cid_json = ReservedKeyMap {
             _slash: ReservedKeyValue::Cid(cid.to_string()),
         };
-        SerializeSized::new(cid_json).serialize(self.0)
+        //SerializeSized::new(cid_json).serialize(self.0)
+        SerializeSized::new(cid_json).serialize(self.ser)
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
