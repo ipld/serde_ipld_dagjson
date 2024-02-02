@@ -5,7 +5,7 @@ use cid::{serde::{CID_SERDE_PRIVATE_IDENTIFIER, BytesToCidVisitor}, Cid};
 use serde::{
     de::{
         self,
-        value::{BytesDeserializer, StringDeserializer, BorrowedStrDeserializer},
+        value::{StringDeserializer, BorrowedStrDeserializer},
         VariantAccess as _,
     },
     Deserialize,

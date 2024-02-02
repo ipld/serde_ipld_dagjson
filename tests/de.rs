@@ -297,8 +297,6 @@ fn test_reserved_trailing() {
 
 #[test]
 fn test_extract_links() {
-    use serde::de::DeserializeSeed;
-
     //let extract_links = de::ExtractLinks::new();
     //let slice = b"[123456789959,-34567897654325468,-456787678,true,null,23456543.5]";
     //let slice = b"[null]";

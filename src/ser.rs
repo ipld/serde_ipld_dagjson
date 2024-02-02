@@ -550,73 +550,54 @@ where
 //    //cid: Option<<S as ser::SerializeTupleVariant>::Ok>
 //}
 
-pub enum SerializeCid<S, U> {
-    TupleVariant(S),
-    Cid(U),
+
+/// Parts of this enum is a state machine.
+///
+/// If it's a normal TupleVariant, it will just use the underlying serializer for serialization. In
+/// case it's a CID, it will first be constructed with `Self::CidPending`, which contains a
+/// serializers. Once we've serialized the CID, it will be stored in `Self::CidDone`. The reason to
+/// do it this way is, that the serializer needs to be owned, but
+/// `serde::ser::SerializeTupleVariant::serialize_field` only allows for a mutable reference.
+enum SerializeCidState<V, S>
+where
+    V: ser::SerializeTupleVariant,
+    S: ser::Serializer,
+{
+    TupleVariant(V),
+    // The serializer always must be set, it's only an option, so that it can be taken out of the
+    // enum instance.
+    CidPending(Option<S>),
+    CidDone(S::Ok),
 }
+
+// Wrap the enum in a struct, so that the enum does not need to be public, but can represent the
+// internal state.
+pub struct SerializeCid<V, S>(SerializeCidState<V, S>)
+where
+    V: ser::SerializeTupleVariant,
+    S: ser::Serializer;
+
 
 impl<S, U> SerializeCid<S, U>
-//where
-    //S: ser::SerializeTupleVariant,
-    //U: ser::Serializer,
+where
+    S: ser::SerializeTupleVariant,
+    U: ser::Serializer,
 {
-    //pub fn new(tuple_ser: S, json_ser: U) -> Self {
-    //    //Self { ser: Some(serializer), cid_serializer: None, cid: None }
-    //    Self { tuple_ser, json_ser, is_cid: false }
-    //}
-    //
-    //pub fn new_cid(tuple_ser: S, json_ser: U) -> Self {
-    //    //Self { ser: None, cid_serializer: Some(CidSerializer(serializer)), cid: None }
-    //    Self { tuple_ser, json_ser, is_cid: false }
-    //}
-    //pub fn new(json_ser: U,
-    //    name: &'static str,
-    //    variant_index: u32,
-    //    variant: &'static str,
-    //    len: usize,
-    //
-    //    ) -> Self {
-    //    //Self { ser: Some(serializer), cid_serializer: None, cid: None }
-    //    //let tuple_ser = json_ser.serialize_tuple_variant(name, variant_index, variant, len).unwrap();
-    //    Self { json_ser, is_cid: false, tuple_ser: None }
-    //}
-    //
-    //pub fn new_cid(json_ser: U,
-    //    name: &'static str,
-    //    variant_index: u32,
-    //    variant: &'static str,
-    //    len: usize,
-    //    ) -> Self {
-    //    //Self { ser: None, cid_serializer: Some(CidSerializer(serializer)), cid: None }
-    //    //let tuple_ser = json_ser.serialize_tuple_variant(name, variant_index, variant, len).unwrap();
-    //    Self { json_ser, is_cid: false, tuple_ser: None}
-    //}
     pub fn new(tuple_serializer: S) -> Self {
-        Self::TupleVariant(tuple_serializer)
+        Self(SerializeCidState::TupleVariant(tuple_serializer))
     }
     pub fn new_cid(json_serializer: U) -> Self {
-        Self::Cid(json_serializer)
+        Self(SerializeCidState::CidPending(Some(json_serializer)))
     }
 }
 
 
-//impl<U> ser::SerializeTupleVariant for SerializeCid<U>
 impl<S, U> ser::SerializeTupleVariant for SerializeCid<S, U>
 where
     S: ser::SerializeTupleVariant,
-    //for<'a> &'a mut U: ser::Serializer,
     U: ser::Serializer,
-//    //S: ser::SerializeTupleVariant,
-//    //S: ser::Serializer,
+    U: ser::Serializer<Ok = S::Ok, Error = S::Error>,
 {
-    //type Ok = <S as ser::Serialize>::SerializeTupleVariant::Ok;
-    //type Error = <S as ser::Serialize>::SerializeTupleVariant::Error;
-    //type Ok = ();
-    //type Error = EncodeError;
-    //type Ok = <S as ser::SerializeTupleVariant>::Ok;
-    //type Error = <S as ser::SerializeTupleVariant>::Error;
-    //type Ok = <<U as ser::Serializer>::SerializeTupleVariant as ser::SerializeTupleVariant>::Ok;
-    //type Error = <<U as ser::Serializer>::SerializeTupleVariant as ser::SerializeTupleVariant>::Error;
     type Ok = S::Ok;
     type Error = S::Error;
 
@@ -625,55 +606,49 @@ where
         T: ?Sized + ser::Serialize,
     {
         println!("vmx: ser: serialize tuple variant2");
-        //if self.is_cid {
-        //    //self.cid = Some(cid_serializer.serialize_bytes(value));
-        //    //self.cid = Some(value.serialize(cid_serializer).unwrap());
-        //    value.serialize(CidSerializer(self.json_ser)).unwrap();
-        //    return Ok(())
-        //} else {
-        //    let tuple_ser = self.json_ser.serialize_tuple_variant("df", 0 , "da", 1).unwrap();
-        //    //self.tuple_ser.serialize_field(&SerializeRef::new(value))
-        //    tuple_ser.serialize_field(&SerializeRef::new(value))
-        //}
-        match self {
-            Self::TupleVariant(serializer) => {
-                serializer.serialize_field(&SerializeRef::new(value));
+        match self.0 {
+            SerializeCidState::TupleVariant(ref mut serializer) => {
+                serializer.serialize_field(&SerializeRef::new(value))?;
                 Ok(())
             },
-            Self::Cid(serializer) => {
-                //let cid: Cid = value.serialize(serializer)?;
-                //serializer.serialize(value);
-                //serializer.serialize_field(&SerializeRef::new(value));
-
-
-
-                // NOTE vmx 2024-02-02: commenting this line out makes things compile. But how can
-                // I get this serialization work? The idea would then to store the result of the
-                // deserialization temporarily within this impl and then return it on the `end()`
-                // call.
-                value.serialize(CidSerializer::new(serializer));
-
-
-
-                //value.serialize(SerializeRef::new(value));
-                //ser::Serialize::serialize(value, serializer);
-                Ok(())
-            }
+            SerializeCidState::CidPending(ref mut json_serializer) => {
+                match json_serializer.take() {
+                    Some(serializer) => {
+                        let cid = value.serialize(CidSerializer::new(serializer)).unwrap();
+                        *self = Self(SerializeCidState::CidDone(cid));
+                        Ok(())
+                    },
+                    None => {
+                        // This case can never happen as the constructor makes sure that a
+                        // `Self::CidPending` always has a serializer set. It's only an `Option`,
+                        // so that we can take it out of the enum in order to own it.
+                        Err(ser::Error::custom("unreachable"))
+                    }
+                }
+            },
+            SerializeCidState::CidDone(_) => {
+                // This case can never happen, as `serialize_field()` is never called on a
+                // `Self::CidDone` instance. `Self::CidDone` is only used to return the final
+                // result.
+                // `Self::CidDone`.
+                Err(ser::Error::custom("unreachable"))
+            },
         }
     }
 
-    fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        //if let Some(cid) = self.cid.take() {
-        //    cid.into()
-        //} else {
-        //self.ser.as_mut().unwrap().end()
-        //}
-        match self {
-            Self::TupleVariant(serializer) => {
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        match self.0 {
+            SerializeCidState::TupleVariant(serializer) => {
                 serializer.end()
             },
-            Self::Cid(serializer) => {
-                todo!();
+            SerializeCidState::CidPending(_) => {
+                // This case can never happen, as as soon `serialize_field` is called on an
+                // instance of `Self::CidPending`, that one will immediately replaced by
+                // `Self::CidDone`.
+                Err(ser::Error::custom("unreachable"))
+            },
+            SerializeCidState::CidDone(cid) => {
+                Ok(cid)
             }
         }
     }
@@ -773,6 +748,10 @@ impl<S> CidSerializer<S> {
 //    }
 //}
 //
+
+
+
+
 
 //impl<'a, S> ser::Serializer for &mut CidSerializer<'a, S>
 //impl<S> ser::Serializer for &mut CidSerializer<S>
