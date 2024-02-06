@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use cid::Cid;
 use ipld_core::ipld::Ipld;
+use serde::Deserialize;
 use serde_bytes::{ByteArray, ByteBuf};
 use serde_ipld_dagjson::{de, to_vec, DecodeError};
 
@@ -58,6 +59,23 @@ fn test_array_cid() {
     let expected = Ipld::List(vec![Ipld::Link(
         Cid::from_str("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap(),
     )]);
+    assert_eq!(ipld, expected);
+}
+
+#[test]
+fn test_more_keys_cid() {
+    let data =
+        br#"{"hello": {"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}, "world": 5}"#;
+    let ipld: Ipld = de::from_slice(data).unwrap();
+    println!("vmx: test nested cid: ipld: {:?}", ipld);
+    let expected = Ipld::Map(BTreeMap::from([(
+        "hello".to_string(),
+        Ipld::Link(
+            Cid::from_str("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap(),
+        ),
+    ),
+    ("world".to_string(),Ipld::Integer(5)),
+    ]));
     assert_eq!(ipld, expected);
 }
 
@@ -293,6 +311,53 @@ fn test_reserved_trailing() {
     let ipld: Result<Ipld, _> = de::from_slice(data);
     println!("vmx: ipld: {:?}", ipld);
     assert!(ipld.is_err());
+}
+
+#[test]
+fn test_cid_in_tagged_enum() {
+    #[derive(Debug, Deserialize, PartialEq)]
+    pub enum Externally {
+        Cid(Cid),
+    }
+
+    #[derive(Debug, Deserialize, PartialEq)]
+    #[serde(tag = "type")]
+    pub enum Internally {
+        Cid { cid: Cid },
+    }
+
+    #[derive(Debug, Deserialize, PartialEq)]
+    #[serde(untagged)]
+    pub enum Untagged {
+        Cid(Cid),
+    }
+
+    let json_cid = br#"{"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}"#;
+
+    // {"Cid": cid}
+    //let cbor_map1 = [vec![0xa1, 0x63, 0x43, 0x69, 0x64], Vec::from(cbor_cid)].concat();
+    let json_map1 = br#"{"Cid": {"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}}"#;
+
+    // {"cid": cid, "type": "Cid"}
+    //let cbor_map2 = [
+    //    vec![
+    //        0xa2, 0x64, 0x74, 0x79, 0x70, 0x65, 0x63, 0x43, 0x69, 0x64, 0x63, 0x63, 0x69, 0x64,
+    //    ],
+    //    Vec::from(cbor_cid),
+    //]
+    //.concat();
+    let json_map2 = br#"{"cid": {"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}, "type": "Cid"}"#;
+
+    let cid = Cid::try_from("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap();
+
+    let decoded: Externally = de::from_slice(json_map1).unwrap();
+    assert_eq!(decoded, Externally::Cid(cid));
+
+    let decoded: Internally = de::from_slice(json_map2).unwrap();
+    assert_eq!(decoded, Internally::Cid { cid });
+
+    let decoded: Untagged = de::from_slice(json_cid).unwrap();
+    assert_eq!(decoded, Untagged::Cid(cid));
 }
 
 #[test]
