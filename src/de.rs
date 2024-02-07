@@ -1,7 +1,7 @@
 //! Deserialization.
 use std::{fmt, io};
 
-use cid::serde::CID_SERDE_PRIVATE_IDENTIFIER;
+use cid::{serde::CID_SERDE_PRIVATE_IDENTIFIER, Cid};
 use serde::{
     de::{
         self,
@@ -761,5 +761,156 @@ where
         self.access
             .variant_seed(DeserializeSeed::new(seed))
             .map(|(value, access)| (value, VariantAccess::new(access)))
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ExtractLinks {
+    pub links: Vec<Cid>,
+}
+
+impl ExtractLinks {
+    pub fn new() -> Self {
+        Self { links: Vec::new() }
+    }
+}
+
+impl<'de> de::Visitor<'de> for ExtractLinks {
+    type Value = Self;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("anything at all")
+    }
+
+    #[inline]
+    fn visit_bool<E>(self, x: bool) -> Result<Self::Value, E> {
+        println!("vmx: de: ignored any: visit_bool");
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_i64<E>(self, x: i64) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_i128<E>(self, x: i128) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_u64<E>(self, x: u64) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_u128<E>(self, x: u128) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_f64<E>(self, x: f64) -> Result<Self::Value, E> {
+        let _ = x;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let _ = s;
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Self::Value, E> {
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        Self::deserialize(deserializer)
+    }
+
+    #[inline]
+    fn visit_newtype_struct<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        println!("vmx: de: ignored any: visit_newtype_struct");
+        let bytes = serde_bytes::ByteBuf::deserialize(deserializer).unwrap();
+        let cid = Cid::try_from(&bytes[..]).unwrap();
+        self.links.push(cid);
+        Ok(self)
+    }
+
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        Ok(Self::new())
+    }
+
+    #[inline]
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::SeqAccess<'de>,
+    {
+        println!("vmx: de: ignored any: visit_seq");
+        while let Some(mut maybe_links) = seq.next_element::<Self>()? {
+            println!(
+                "vmx: de: ignored any: visit_seq: maybe links: {:?}",
+                maybe_links
+            );
+            self.links.append(&mut maybe_links.links)
+        }
+        Ok(self)
+    }
+
+    #[inline]
+    fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::MapAccess<'de>,
+    {
+        while let Some((_, mut maybe_links)) = map.next_entry::<Self, Self>()? {
+            self.links.append(&mut maybe_links.links)
+        }
+        Ok(self)
+    }
+
+    #[inline]
+    fn visit_bytes<E>(self, bytes: &[u8]) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        println!("vmx: de: ignored any: visit_bytes");
+        let _ = bytes;
+        Ok(Self::new())
+    }
+
+    fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::EnumAccess<'de>,
+    {
+        use serde::de::VariantAccess;
+        println!("vmx: de: ignored any: visit_enum");
+        data.variant::<Self>()?.1.newtype_variant()
+    }
+}
+
+impl<'de> Deserialize<'de> for ExtractLinks {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(Self::new())
     }
 }
