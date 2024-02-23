@@ -3,6 +3,12 @@
 version = 3
 
 [[package]]
+name = "anyhow"
+version = "1.0.80"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ad32ce52e4161730f7098c077cd2ed6229b5804ccf99e5366be1ab72a98b4e1"
+
+[[package]]
 name = "base-x"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -59,10 +65,11 @@ dependencies = [
 
 [[package]]
 name = "ipld-core"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea31d0d836cf4070848aecb1eded83ec41a2ab3c9270e96df31580f8a2049fbc"
+checksum = "3c6f85d53216cdc216013670266c6b2a3ec8ddd3eaa077ee5042d71c2d5fa775"
 dependencies = [
+ "anyhow",
  "cid",
  "serde",
 ]
