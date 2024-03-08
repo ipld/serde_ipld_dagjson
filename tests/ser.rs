@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, str::FromStr};
 
-use cid::Cid;
+use ipld_core::cid::Cid;
 use serde::Serialize;
 use serde_bytes::{ByteBuf, Bytes};
 use serde_ipld_dagjson::to_vec;

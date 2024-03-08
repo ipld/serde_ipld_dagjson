@@ -1,4 +1,4 @@
-use cid::{multibase::Base, Cid};
+use ipld_core::cid::{multibase::Base, Cid};
 use serde::{de, Deserialize, Serialize};
 
 /// Result of deserializing a DAG-JSON map consisting of the reserved key `/`.

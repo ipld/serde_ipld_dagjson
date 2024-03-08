@@ -1,4 +1,5 @@
 //! DAG-JSON serialization and deserialization.
+pub mod codec;
 pub mod de;
 pub mod error;
 pub mod ser;
