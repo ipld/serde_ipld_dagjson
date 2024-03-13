@@ -1,7 +1,7 @@
 //! Serialization.
 use std::{fmt, io};
 
-use cid::{serde::CID_SERDE_PRIVATE_IDENTIFIER, Cid, multibase::Base};
+use cid::{multibase::Base, serde::CID_SERDE_PRIVATE_IDENTIFIER, Cid};
 use serde::{ser, Serialize};
 
 use crate::{
@@ -177,9 +177,7 @@ where
     where
         T: ?Sized + ser::Serialize,
     {
-        println!("vmx: ser: serialize_newtype_struct");
         if name == CID_SERDE_PRIVATE_IDENTIFIER {
-            //SerializeRef::new(value).serialize(CidSerializer(self.ser))
             value.serialize(CidSerializer(self.ser))
         } else {
             self.ser

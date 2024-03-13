@@ -40,7 +40,6 @@ fn test_nested_cid() {
     let data =
         br#"{"hello": {"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}}"#;
     let ipld: Ipld = de::from_slice(data).unwrap();
-    println!("vmx: test nested cid: ipld: {:?}", ipld);
     let expected = Ipld::Map(BTreeMap::from([(
         "hello".to_string(),
         Ipld::Link(
@@ -54,7 +53,6 @@ fn test_nested_cid() {
 fn test_array_cid() {
     let data = br#"[{"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}]"#;
     let ipld: Ipld = de::from_slice(data).unwrap();
-    println!("vmx: test nested cid: ipld: {:?}", ipld);
     let expected = Ipld::List(vec![Ipld::Link(
         Cid::from_str("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap(),
     )]);
@@ -290,6 +288,5 @@ fn test_reserved_trailing() {
     let data =
         br#"{"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy", "trailing": 123}"#;
     let ipld: Result<Ipld, _> = de::from_slice(data);
-    println!("vmx: ipld: {:?}", ipld);
     assert!(ipld.is_err());
 }

@@ -40,7 +40,6 @@ fn test_float() {
 #[test]
 fn test_f32() {
     let json = to_vec(&4000.5f32).unwrap();
-    println!("vmx: json: {}", std::str::from_utf8(&json).unwrap());
     assert_eq!(json, b"4000.5");
 }
 
@@ -134,7 +133,6 @@ fn test_ip_addr() {
 fn test_cid() {
     let cid = Cid::from_str("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap();
     let json = to_vec(&cid).unwrap();
-    println!("vmx: json: {:?}", std::str::from_utf8(&json));
     assert_eq!(
         json,
         br#"{"/":"bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}"#
