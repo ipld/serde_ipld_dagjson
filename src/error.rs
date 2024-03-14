@@ -57,3 +57,44 @@ impl From<serde_json::Error> for DecodeError {
         Self::Message(error.to_string())
     }
 }
+
+/// Encode and Decode error combined.
+#[derive(Debug)]
+pub enum CodecError {
+    /// A decoding error.
+    Decode(DecodeError),
+    /// An encoding error.
+    Encode(EncodeError),
+    /// An error from within `serde_json`.
+    SerdeJson(String),
+}
+
+impl fmt::Display for CodecError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Decode(error) => write!(f, "decode error: {}", error),
+            Self::Encode(error) => write!(f, "encode error: {}", error),
+            Self::SerdeJson(error) => write!(f, "serde_json error: {}", error),
+        }
+    }
+}
+
+impl std::error::Error for CodecError {}
+
+impl From<DecodeError> for CodecError {
+    fn from(error: DecodeError) -> Self {
+        Self::Decode(error)
+    }
+}
+
+impl From<EncodeError> for CodecError {
+    fn from(error: EncodeError) -> Self {
+        Self::Encode(error)
+    }
+}
+
+impl From<serde_json::Error> for CodecError {
+    fn from(error: serde_json::Error) -> Self {
+        Self::SerdeJson(error.to_string())
+    }
+}

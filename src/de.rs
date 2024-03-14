@@ -1,7 +1,7 @@
 //! Deserialization.
 use std::{fmt, io};
 
-use cid::serde::CID_SERDE_PRIVATE_IDENTIFIER;
+use ipld_core::cid::serde::CID_SERDE_PRIVATE_IDENTIFIER;
 use serde::{
     de::{
         self,

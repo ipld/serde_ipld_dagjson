@@ -1,7 +1,7 @@
 //! Serialization.
 use std::{fmt, io};
 
-use cid::{multibase::Base, serde::CID_SERDE_PRIVATE_IDENTIFIER, Cid};
+use ipld_core::cid::{multibase::Base, serde::CID_SERDE_PRIVATE_IDENTIFIER, Cid};
 use serde::{ser, Serialize};
 
 use crate::{
