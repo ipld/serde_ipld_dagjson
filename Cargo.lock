@@ -10,9 +10,9 @@ checksum = "4cbbc9d0964165b47557570cce6c952866c2678457aca742aafc9fb771d30270"
 
 [[package]]
 name = "cid"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "472ac98592f38dfd48f188d5713a328422ed22fa39eb52b8bca495370134762a"
+checksum = "3147d8272e8fa0ccd29ce51194dd98f79ddfb8191ba9e3409884e751798acf3a"
 dependencies = [
  "core2",
  "multibase",
@@ -59,9 +59,9 @@ dependencies = [
 
 [[package]]
 name = "ipld-core"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19865d6ca8b0b063f589b3b747e965e191b404564a1d64ae9f0b56428d6de6b8"
+checksum = "8cd30b9d3019be78818b8d20691ecfa98630ae2d7fb23ffd4d668ee27ad25108"
 dependencies = [
  "cid",
  "serde",

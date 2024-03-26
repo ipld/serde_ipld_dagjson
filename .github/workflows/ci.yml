@@ -36,3 +36,6 @@ jobs:
 
       - name: Test with default features
         run: cargo test --all-features
+
+      - name: Make sure the lockfile is up-to-date
+        run: cargo build --locked
