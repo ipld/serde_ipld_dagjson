@@ -37,5 +37,15 @@ jobs:
       - name: Test with default features
         run: cargo test --all-features
 
-      - name: Make sure the lockfile is up-to-date
+  check-lockfile:
+    name: Make sure the lockfile is up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Error if checked-in lockfile is not up-to-date
         run: cargo build --locked
