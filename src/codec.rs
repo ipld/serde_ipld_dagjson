@@ -11,6 +11,7 @@ use serde::{de::Deserialize, ser::Serialize};
 use crate::{de::Deserializer, error::CodecError};
 
 /// DAG-JSON implementation of ipld-core's `Codec` trait.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DagJsonCodec;
 
 impl<T> Codec<T> for DagJsonCodec
