@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use ipld_core::{cid::Cid, ipld::Ipld};
+use serde::Deserialize;
 use serde_bytes::{ByteArray, ByteBuf};
 use serde_ipld_dagjson::{de, to_vec, DecodeError};
 
@@ -288,4 +289,27 @@ fn test_reserved_trailing() {
         br#"{"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy", "trailing": 123}"#;
     let ipld: Result<Ipld, _> = de::from_slice(data);
     assert!(ipld.is_err());
+}
+
+#[test]
+fn test_newtype_bytes() {
+    #[derive(Deserialize)]
+    struct Test(ByteBuf);
+
+    let data = br#"{"/": {"bytes": "dm14"}}"#;
+    let bytes: Test = de::from_slice(data).unwrap();
+    let expected = ByteBuf::from([118, 109, 120]);
+    assert_eq!(bytes.0, expected);
+}
+
+#[test]
+fn test_newtype_cid() {
+    #[derive(Deserialize)]
+    struct Test(Cid);
+
+    let data = br#"{"/": "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy"}"#;
+    let cid: Test = de::from_slice(data).unwrap();
+    let expected =
+        Cid::from_str("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap();
+    assert_eq!(cid.0, expected);
 }
