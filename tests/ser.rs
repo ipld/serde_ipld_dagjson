@@ -45,19 +45,19 @@ fn test_f32() {
 
 #[test]
 fn test_infinity() {
-    let json = to_vec(&::std::f64::INFINITY);
+    let json = to_vec(&f64::INFINITY);
     assert!(json.is_err(), "Only finite numbers are supported.");
 }
 
 #[test]
 fn test_neg_infinity() {
-    let json = to_vec(&::std::f64::NEG_INFINITY);
+    let json = to_vec(&f64::NEG_INFINITY);
     assert!(json.is_err(), "Only finite numbers are supported.");
 }
 
 #[test]
 fn test_nan() {
-    let json = to_vec(&::std::f32::NAN);
+    let json = to_vec(&f32::NAN);
     assert!(json.is_err(), "Only finite numbers are supported.");
 }
 
@@ -85,7 +85,7 @@ fn test_integer() {
     }
     // u64
     {
-        let json = to_vec(&::std::u64::MAX).unwrap();
+        let json = to_vec(&u64::MAX).unwrap();
         assert_eq!(json, b"18446744073709551615");
     }
     // u128 within u64 range
