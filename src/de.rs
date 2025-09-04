@@ -282,8 +282,7 @@ where
         if name == CID_SERDE_PRIVATE_IDENTIFIER {
             self.deserialize_reserved_cid(Visitor::new(visitor))
         } else {
-            self.de
-                .deserialize_newtype_struct(name, Visitor::new(visitor))
+            visitor.visit_newtype_struct(self)
         }
     }
 
