@@ -30,7 +30,7 @@ fn test_codec_decode() {
 fn test_codec_links() {
     let cid = Cid::try_from("bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy").unwrap();
     let data: Ipld = ipld!({"some": {"nested": cid}, "or": [cid, cid], "foo": true});
-    let expected = iter::repeat(cid).take(3).collect::<Vec<_>>();
+    let expected = iter::repeat_n(cid, 3).collect::<Vec<_>>();
     let encoded = DagJsonCodec::encode_to_vec(&data).unwrap();
 
     let links = DagJsonCodec::links(&encoded).unwrap().collect::<Vec<_>>();
