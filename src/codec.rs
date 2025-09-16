@@ -8,7 +8,7 @@ use ipld_core::{
 
 use serde::{de::Deserialize, ser::Serialize};
 
-use crate::{de::Deserializer, error::CodecError};
+use crate::{de::Deserializer, error::CodecError, DAG_JSON_CODE};
 
 /// DAG-JSON implementation of ipld-core's `Codec` trait.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -18,7 +18,7 @@ impl<T> Codec<T> for DagJsonCodec
 where
     T: for<'a> Deserialize<'a> + Serialize,
 {
-    const CODE: u64 = 0x129;
+    const CODE: u64 = DAG_JSON_CODE;
     type Error = CodecError;
 
     fn decode<R: BufRead>(reader: R) -> Result<T, Self::Error> {
