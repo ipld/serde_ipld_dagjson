@@ -1,8 +1,11 @@
 //! Serialization.
-use std::{fmt, io};
+use std::{collections::BTreeMap, fmt, io};
 
 use ipld_core::cid::{multibase::Base, serde::CID_SERDE_PRIVATE_IDENTIFIER, Cid};
-use serde::{ser, Serialize};
+use serde::{
+    ser::{self, SerializeMap},
+    Serialize,
+};
 
 use crate::{
     error::EncodeError,
@@ -54,7 +57,7 @@ where
     type SerializeTupleStruct = Serializer<S::SerializeTupleStruct>;
     type SerializeTupleVariant = Serializer<S::SerializeTupleVariant>;
     type SerializeMap = Serializer<S::SerializeMap>;
-    type SerializeStruct = Serializer<S::SerializeStruct>;
+    type SerializeStruct = SerializeStructSorted<S>;
     type SerializeStructVariant = Serializer<S::SerializeStructVariant>;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
@@ -236,12 +239,13 @@ where
 
     fn serialize_struct(
         self,
-        name: &'static str,
-        len: usize,
+        _name: &'static str,
+        _len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        Ok(Self::SerializeStruct::new(
-            self.ser.serialize_struct(name, len)?,
-        ))
+        Ok(SerializeStructSorted {
+            ser: self.ser,
+            map: BTreeMap::new(),
+        })
     }
 
     fn serialize_struct_variant(
@@ -445,9 +449,14 @@ where
     }
 }
 
-impl<S> ser::SerializeStruct for Serializer<S>
+pub struct SerializeStructSorted<S: ser::Serializer> {
+    ser: S,
+    map: BTreeMap<&'static str, Box<serde_json::value::RawValue>>,
+}
+
+impl<S> ser::SerializeStruct for SerializeStructSorted<S>
 where
-    S: ser::SerializeStruct,
+    S: ser::Serializer,
 {
     type Ok = S::Ok;
     type Error = S::Error;
@@ -456,15 +465,19 @@ where
     where
         T: ?Sized + ser::Serialize,
     {
-        self.ser.serialize_field(key, &SerializeRef::new(value))
+        let bytes = to_vec(value).map_err(ser::Error::custom)?;
+        let json_str = String::from_utf8(bytes).map_err(ser::Error::custom)?;
+        let raw = serde_json::value::RawValue::from_string(json_str).map_err(ser::Error::custom)?;
+        self.map.insert(key, raw);
+        Ok(())
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.ser.end()
-    }
-
-    fn skip_field(&mut self, key: &'static str) -> Result<(), Self::Error> {
-        self.ser.skip_field(key)
+        let mut map = self.ser.serialize_map(Some(self.map.len()))?;
+        for (key, raw) in &self.map {
+            map.serialize_entry(key, raw.as_ref())?;
+        }
+        map.end()
     }
 }
 
