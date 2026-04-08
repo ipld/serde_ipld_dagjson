@@ -174,3 +174,24 @@ fn test_nested_bytes() {
     let json = to_vec(&nested).unwrap();
     assert_eq!(json, br#"{"some":{"/":{"bytes":"dm14"}}}"#);
 }
+
+#[test]
+fn test_ordering_dagjson() {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct AB {
+        a: u32,
+        b: u32,
+    }
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct BA {
+        b: u32,
+        a: u32,
+    }
+
+    let ab_bytes = serde_ipld_dagjson::ser::to_vec(&AB { a: 1, b: 2 }).unwrap();
+    let ab_str = std::str::from_utf8(&ab_bytes);
+    let ba_bytes = serde_ipld_dagjson::ser::to_vec(&BA { b: 2, a: 1 }).unwrap();
+    let ba_str = std::str::from_utf8(&ba_bytes);
+
+    assert_eq!(ab_str, ba_str);
+}
